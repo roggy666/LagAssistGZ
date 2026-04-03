@@ -9,6 +9,8 @@ public enum ServerPackage {
 	CRAFTBUKKIT("org.bukkit.craftbukkit", getServerVersion()),
 	MINECRAFT("net.minecraft", getServerVersion());
 
+	private static String cachedVersion;
+
 	private final String path;
 
 	ServerPackage(String basePath, String version) {
@@ -16,17 +18,22 @@ public enum ServerPackage {
 	}
 
     public static String getServerVersion() {
+        if (cachedVersion != null) {
+            return cachedVersion;
+        }
+
         String craftPkg = Bukkit.getServer().getClass().getPackage().getName();
 
         // If the package already contains v1_* just return it (legacy versioned CraftBukkit)
         if (craftPkg.contains("v1_")) {
-            return craftPkg.substring(craftPkg.lastIndexOf('.') + 1);
+            cachedVersion = craftPkg.substring(craftPkg.lastIndexOf('.') + 1);
+            return cachedVersion;
         }
 
         // Modern Paper (1.20.5+) — CraftBukkit is no longer versioned.
         // Parse version from Bukkit.getBukkitVersion() (e.g. "1.21.4-R0.1-SNAPSHOT" or "26.1-R0.1-SNAPSHOT")
-        String bukkitVersion = Bukkit.getBukkitVersion(); // e.g. "26.1-R0.1-SNAPSHOT"
-        String mcVersion = bukkitVersion.split("-")[0];    // e.g. "26.1"
+        String bukkitVersion = Bukkit.getBukkitVersion();
+        String mcVersion = bukkitVersion.split("-")[0];
         String[] split = mcVersion.split("\\.");
         String versionKey;
         if (split.length >= 2) {
@@ -42,13 +49,14 @@ public enum ServerPackage {
 
             try {
                 Class.forName(nmsPath);
-                return version;
+                cachedVersion = version;
+                return cachedVersion;
             } catch (ClassNotFoundException ignored) {}
         }
 
-        // On modern Paper, CraftBukkit has no version suffix — return empty string
-        Bukkit.getLogger().info(Main.PREFIX + "Modern Paper detected (no versioned CraftBukkit package), version: " + mcVersion);
-        return "";
+        // On modern Paper, CraftBukkit has no version suffix
+        cachedVersion = "";
+        return cachedVersion;
     }
 
 

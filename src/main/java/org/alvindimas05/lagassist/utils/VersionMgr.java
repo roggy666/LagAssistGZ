@@ -104,7 +104,6 @@ public class VersionMgr {
 	}
 
 	public static boolean isNewMaterials() {
-        Bukkit.getLogger().info("[VersionMgr] Version is " + Bukkit.getVersion());
 		if (isV1_8()) {
 			return false;
 		}
