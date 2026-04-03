@@ -237,10 +237,11 @@ public class Reflection {
 	public static Class<?> getClass(String classname) {
 		try {
 			
-			String path = classname.replace("{nms}", "net.minecraft.server" + (VersionMgr.isV_17Plus() ? "" : "." + version))
-					.replace("{nmsv}", "net.minecraft.server." + version)
-					.replace("{nm}", "net.minecraft" + (VersionMgr.isV_17Plus() ? "" : "." + version))
-					.replace("{cb}", "org.bukkit.craftbukkit." + version)
+			String versionSuffix = version.isEmpty() ? "" : "." + version;
+			String path = classname.replace("{nms}", "net.minecraft.server" + (VersionMgr.isV_17Plus() ? "" : versionSuffix))
+					.replace("{nmsv}", "net.minecraft.server" + versionSuffix)
+					.replace("{nm}", "net.minecraft" + (VersionMgr.isV_17Plus() ? "" : versionSuffix))
+					.replace("{cb}", "org.bukkit.craftbukkit" + versionSuffix)
 					.replace("{b}", "org.bukkit");
 			return Class.forName(path);
 		} catch (Exception e) {

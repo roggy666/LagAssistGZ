@@ -78,16 +78,29 @@ public class VersionMgr {
         return Bukkit.getVersion().contains("1.21.");
     }
 
+    /**
+     * Returns true for Minecraft versions 26.x+ (where Mojang dropped the "1." prefix).
+     */
+    public static boolean isModernVersion() {
+        String bukkitVersion = Bukkit.getBukkitVersion().split("-")[0]; // e.g. "26.1"
+        try {
+            int major = Integer.parseInt(bukkitVersion.split("\\.")[0]);
+            return major >= 2; // Any major version >= 2 means post-1.x naming
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
 	public static boolean isV_17Plus() {
-		return isV1_17() || isV1_18() || isV1_19() || isV1_20() || isV1_21();
+		return isModernVersion() || isV1_17() || isV1_18() || isV1_19() || isV1_20() || isV1_21();
 	}
 
     public static boolean isV_20Plus() {
-        return isV1_20() || isV1_21();
+        return isModernVersion() || isV1_20() || isV1_21();
     }
 
 	public static boolean isV_21Plus() {
-		return isV1_21();
+		return isModernVersion() || isV1_21();
 	}
 
 	public static boolean isNewMaterials() {
