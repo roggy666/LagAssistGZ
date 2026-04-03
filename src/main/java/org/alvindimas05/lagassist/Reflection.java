@@ -60,6 +60,8 @@ public class Reflection {
 	}
 
 	public static void Enabler() {
+		boolean mojangMapped = VersionMgr.isModernVersion() || VersionMgr.isV_20Plus();
+
 		// PUTTING CLASSES IN ENUM.
 		Classes.CraftWorld.type = getClass("{cb}.CraftWorld");
 		Classes.World.type = getClass("{b}.World");
@@ -67,10 +69,27 @@ public class Reflection {
 		Classes.CraftPlayer.type = getClass("{cb}.entity.CraftPlayer");
 		Classes.Material.type = getClass("{b}.Material");
 		Classes.MapMeta.type = getClass("{b}.inventory.meta.MapMeta");
-		Classes.WorldServer.type = getClass(VersionMgr.isV_17Plus() ? "{nms}.level.WorldServer" : "{nms}.WorldServer");
-		Classes.MinecraftServer.type = getClass("{nms}.MinecraftServer");
-		Classes.ChunkProviderServer.type = getClass(VersionMgr.isV_17Plus() ? "{nms}.level.ChunkProviderServer" : "{nms}.ChunkProviderServer");
-		Classes.IChatBaseComponent.type = getClass(VersionMgr.isV_17Plus() ? "{nm}.network.chat.IChatBaseComponent" : "{nms}.IChatBaseComponent");
+
+		if (mojangMapped) {
+			// Modern Paper uses Mojang mappings
+			Classes.WorldServer.type = getClass("net.minecraft.server.level.ServerLevel");
+			Classes.MinecraftServer.type = getClass("net.minecraft.server.MinecraftServer");
+			Classes.ChunkProviderServer.type = getClass("net.minecraft.server.level.ServerChunkCache");
+			Classes.IChatBaseComponent.type = getClass("net.minecraft.network.chat.Component");
+		} else if (VersionMgr.isV_17Plus()) {
+			// 1.17-1.20.4 Spigot mappings with flattened packages
+			Classes.WorldServer.type = getClass("{nms}.level.WorldServer");
+			Classes.MinecraftServer.type = getClass("{nms}.MinecraftServer");
+			Classes.ChunkProviderServer.type = getClass("{nms}.level.ChunkProviderServer");
+			Classes.IChatBaseComponent.type = getClass("{nm}.network.chat.IChatBaseComponent");
+		} else {
+			// Legacy (<1.17) versioned NMS
+			Classes.WorldServer.type = getClass("{nms}.WorldServer");
+			Classes.MinecraftServer.type = getClass("{nms}.MinecraftServer");
+			Classes.ChunkProviderServer.type = getClass("{nms}.ChunkProviderServer");
+			Classes.IChatBaseComponent.type = getClass("{nms}.IChatBaseComponent");
+		}
+
 //		Classes.PacketPlayOutTitle.type = getClass(VersionMgr.isV_17Plus()? "{nm}.network.protocol.game.PacketPlayOutTitle" : "{nms}.PacketPlayOutTitle");
 
 		if(!VersionMgr.isV1_8()){
@@ -81,10 +100,18 @@ public class Reflection {
 		Methods.getMapId.mthd = getMethod(Classes.MapMeta.getType(), "getMapId");
 		Methods.getPlayerHandle.mthd = getMethod(Classes.CraftPlayer.getType(), "getHandle");
 		Methods.getBlockType.mthd = getMethod(Classes.CraftBlock.getType(), "getType");
-		Methods.getChunkProviderServer.mthd = getMethod(Classes.WorldServer.getType(), "getChunkProviderServer");
-		Methods.getIChatBaseComponent.mthd = getMethod(Classes.IChatBaseComponent.getType(), "a", String.class);
-		Methods.chunkExists.mthd = getMethod(Classes.ChunkProviderServer.getType(), VersionMgr.ChunkExistsName(),
-				int.class, int.class);
+
+		if (mojangMapped) {
+			Methods.getChunkProviderServer.mthd = getMethod(Classes.WorldServer.getType(), "getChunkSource");
+			Methods.getIChatBaseComponent.mthd = null; // Not used via reflection on modern Paper
+			Methods.chunkExists.mthd = getMethod(Classes.ChunkProviderServer.getType(), "hasChunk", int.class, int.class);
+		} else {
+			Methods.getChunkProviderServer.mthd = getMethod(Classes.WorldServer.getType(), "getChunkProviderServer");
+			Methods.getIChatBaseComponent.mthd = getMethod(Classes.IChatBaseComponent.getType(), "a", String.class);
+			Methods.chunkExists.mthd = getMethod(Classes.ChunkProviderServer.getType(), VersionMgr.ChunkExistsName(),
+					int.class, int.class);
+		}
+
 		Methods.setViewDistance.mthd = getMethod(Classes.World.getType(), "setViewDistance", int.class);
 		Methods.getServer.mthd = getMethod(Classes.MinecraftServer.getType(), "getServer");
 	}
@@ -184,6 +211,17 @@ public class Reflection {
 	
 	private static Object minecraftserver = null;
     public static double getTPS(int number) {
+        // Modern Paper has Bukkit.getTPS() API
+        try {
+            double[] tps = Bukkit.getTPS();
+            if (number >= 0 && number < tps.length) {
+                return tps[number];
+            }
+            return -1;
+        } catch (NoSuchMethodError e) {
+            // Fallback to NMS reflection for older servers
+        }
+
         try {
             if (minecraftserver == null) {
                 minecraftserver = Methods.getServer.mthd.invoke(null);
